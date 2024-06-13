@@ -23,7 +23,7 @@ class TodoModel {
     try {
       return TodoModel(
         todoListId: parsedJson['user_todo_list_id'],
-        userId: parsedJson['userId'],
+        userId: parsedJson['user_id'],
         todoListTitle: parsedJson['user_todo_list_title'],
         todoListDesc: parsedJson['user_todo_list_desc'],
         todoListCompleted: parsedJson['user_todo_list_completed'],

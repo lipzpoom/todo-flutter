@@ -2,12 +2,15 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg_provider/flutter_svg_provider.dart';
 import 'package:hexcolor/hexcolor.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:todo/models/todo.model.dart';
 import 'package:todo/models/user.model.dart';
+import 'package:todo/screens/todo-editor.screen.dart';
 import 'package:todo/services/auth.service.dart';
 import 'package:todo/services/todo.service.dart';
 import 'package:todo/utilities/colors.dart';
+import 'package:todo/utilities/custom_dialog.dart';
 import 'package:todo/widgets/custom_widgets.dart';
 
 class TodoScreen extends StatefulWidget {
@@ -19,13 +22,15 @@ class TodoScreen extends StatefulWidget {
 
 class _TodoScreenState extends State<TodoScreen> {
   List<TodoModel> itemsTodo = <TodoModel>[];
+  List<TodoModel> filteredTodo = <TodoModel>[];
   UserModel dataUser = UserModel();
   bool isLoading = true;
-  SharedPreferences? prefTest;
+  final TextEditingController searchTodo = TextEditingController();
 
   @override
   void initState() {
     onInitData();
+    refreshScreen();
     super.initState();
   }
 
@@ -39,6 +44,20 @@ class _TodoScreenState extends State<TodoScreen> {
       return text;
     }
     return text.substring(0, 1).toUpperCase() + text.substring(1);
+  }
+
+  String datetimeFormat(String datetime) {
+    return DateFormat('h:mm a - MM/dd/yy').format(
+        DateTime.parse(datetime).toLocal().add(const Duration(hours: 12)));
+  }
+
+  List filteredTodoList(String? searchKey) {
+    final key = searchKey?.toLowerCase();
+    filteredTodo = itemsTodo
+        .where(
+            (todo) => todo.todoListTitle?.toLowerCase().contains(key!) ?? false)
+        .toList();
+    return filteredTodo;
   }
 
   void onInitData() async {
@@ -56,6 +75,7 @@ class _TodoScreenState extends State<TodoScreen> {
           .findAll(pref.getInt('user_id').toString())
           .then((value) => setState(() {
                 itemsTodo = value;
+                filteredTodo = itemsTodo;
                 isLoading = false;
               }))
           .catchError((ex) {});
@@ -64,260 +84,311 @@ class _TodoScreenState extends State<TodoScreen> {
 
   Future refreshScreen() async {
     onInitData();
+    filteredTodoList('');
+    searchTodo.text = '';
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(100),
-        child: SafeArea(
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  HexColor('#4CC599'),
-                  HexColor('#0D7A5C'),
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        CustomDialog.warningDialog(context, 'Do you want to signout?',
+            () async {
+          await AuthServices().removeDataUser().then((value) =>
+              Navigator.of(context)
+                  .pushNamedAndRemoveUntil('signin', (route) => false));
+        });
+      },
+      child: Scaffold(
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(100),
+          child: SafeArea(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    HexColor('#4CC599'),
+                    HexColor('#0D7A5C'),
+                  ],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.25),
+                    offset: const Offset(0, 4),
+                    blurRadius: 4.0,
+                  ),
                 ],
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.25),
-                  offset: const Offset(0, 4),
-                  blurRadius: 4.0,
-                ),
-              ],
-            ),
-            child: Container(
-              padding: const EdgeInsets.only(top: 42, bottom: 20, left: 20),
-              child: InkWell(
-                onTap: () => showSignOutModalButtom(),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: HexColor('#FBFBFB'),
-                      child: Text(
-                        dataUser.userFirstname?.substring(0, 1).toUpperCase() ??
-                            '',
-                        style: TextStyle(
-                            color: HexColor('#53CD9F'),
-                            fontSize: 20.0,
-                            fontWeight: FontWeight.w500),
-                      ),
-                    ),
-                    const SizedBox(width: 9.0),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Hello!',
+              child: Container(
+                padding: const EdgeInsets.only(top: 42, left: 20),
+                child: InkWell(
+                  onTap: () => showSignOutModalButtom(),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: HexColor('#FBFBFB'),
+                        child: Text(
+                          dataUser.userFirstname
+                                  ?.substring(0, 1)
+                                  .toUpperCase() ??
+                              '',
                           style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12.0,
+                              color: HexColor('#53CD9F'),
+                              fontSize: 20.0,
                               fontWeight: FontWeight.w500),
                         ),
-                        Text(
-                          '${uppercaseFirstLetter(dataUser.userFirstname ?? '')} ${uppercaseFirstLetter(dataUser.userLastname ?? '')}',
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 15.0,
-                              fontWeight: FontWeight.w500),
-                        )
-                      ],
-                    ),
-                  ],
+                      ),
+                      const SizedBox(width: 9.0),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Hello!',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12.0,
+                                  fontWeight: FontWeight.w500),
+                            ),
+                            Text(
+                              '${uppercaseFirstLetter(dataUser.userFirstname ?? '')} ${uppercaseFirstLetter(dataUser.userLastname ?? '')}',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15.0,
+                                  fontWeight: FontWeight.w500),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            )
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
         ),
-      ),
-      body: GestureDetector(
-        onTap: () => FocusScope.of(context).unfocus(),
-        child: isLoading
-            ? Center(
-                child: CupertinoActivityIndicator(
-                  color: AppColors.bgColorItemPrimary,
-                ),
-              )
-            : Container(
-                padding: const EdgeInsets.all(20.0),
-                width: MediaQuery.of(context).size.width,
-                height: MediaQuery.of(context).size.height,
-                child: Column(
-                  children: [
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 20.0),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20.0, vertical: 8.0),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(15.0),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.25),
-                            spreadRadius: 0,
-                            blurRadius: 4,
-                            offset: const Offset(0, 1),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.search,
-                            color: HexColor('#AEAEB2'),
-                            size: 27.0,
-                          ),
-                          const SizedBox(width: 15.0),
-                          Expanded(
-                            child: TextField(
-                              decoration: InputDecoration(
-                                border: InputBorder.none,
-                                hintText: 'Search.......',
-                                hintStyle: TextStyle(
-                                    color: HexColor('#AEAEB2'),
-                                    fontSize: 15.0,
-                                    fontWeight: FontWeight.w500),
+        body: GestureDetector(
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: isLoading
+              ? Center(
+                  child: CupertinoActivityIndicator(
+                    color: AppColors.bgColorItemPrimary,
+                  ),
+                )
+              : Container(
+                  padding: const EdgeInsets.all(20.0),
+                  width: MediaQuery.of(context).size.width,
+                  height: MediaQuery.of(context).size.height,
+                  child: Column(
+                    children: [
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 20.0),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20.0, vertical: 8.0),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(15.0),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.25),
+                              spreadRadius: 0,
+                              blurRadius: 4,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.search,
+                              color: HexColor('#AEAEB2'),
+                              size: 27.0,
+                            ),
+                            const SizedBox(width: 15.0),
+                            Expanded(
+                              child: TextField(
+                                controller: searchTodo,
+                                onChanged: (value) {
+                                  filteredTodoList(value);
+                                },
+                                decoration: InputDecoration(
+                                  border: InputBorder.none,
+                                  hintText: 'Search.......',
+                                  hintStyle: TextStyle(
+                                      color: HexColor('#AEAEB2'),
+                                      fontSize: 15.0,
+                                      fontWeight: FontWeight.w500),
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: RefreshIndicator(
-                        onRefresh: refreshScreen,
-                        child: ListView.builder(
-                          itemCount: itemsTodo.length,
-                          itemBuilder: (context, index) {
-                            return Card(
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: const BorderRadius.all(
-                                      Radius.circular(10.0)),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color:
-                                          HexColor('#000000').withOpacity(0.2),
-                                      blurRadius: 4,
-                                    ),
-                                  ],
-                                ),
-                                height: 130.0,
-                                child: Stack(
-                                  children: [
-                                    Positioned(
-                                        right: 0.0,
-                                        child: IconButton(
-                                          onPressed: () => showMenuModalButtom(
-                                              itemsTodo[index].todoListId),
-                                          icon: Icon(
-                                            Icons.more_horiz,
-                                            color: HexColor('#666161')
-                                                .withOpacity(0.68),
-                                          ),
-                                        )),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 20.0, horizontal: 10.0),
-                                      child: Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Icon(
-                                            itemsTodo[index]
-                                                        .todoListCompleted ==
-                                                    'true'
-                                                ? Icons.check_circle_rounded
-                                                : Icons.circle_outlined,
-                                            size: 20.0,
-                                            color: HexColor('#1DC9A0'),
-                                          ),
-                                          const SizedBox(
-                                            width: 10.0,
-                                          ),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  '${itemsTodo[index].todoListTitle}',
-                                                  style: TextStyle(
-                                                    height: 1,
-                                                    fontSize: 20.0,
-                                                    fontWeight: FontWeight.w500,
-                                                    color: HexColor('#0D7A5C'),
-                                                  ),
-                                                ),
-                                                Text(
-                                                  '${itemsTodo[index].todoListLastUpdate}',
-                                                  style: TextStyle(
-                                                      height: 1.0,
-                                                      fontSize: 12.0,
-                                                      fontWeight:
-                                                          FontWeight.w500,
-                                                      color:
-                                                          HexColor('#D9D9D9')),
-                                                ),
-                                                const SizedBox(
-                                                  height: 6.0,
-                                                ),
-                                                Text(
-                                                  '${itemsTodo[index].todoListDesc}',
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  maxLines: 3,
-                                                  style: TextStyle(
-                                                      fontSize: 12.0,
-                                                      fontWeight:
-                                                          FontWeight.w500,
-                                                      color: HexColor('#666161')
-                                                          .withOpacity(0.68)),
-                                                )
-                                              ],
-                                            ),
-                                          )
-                                        ],
-                                      ),
-                                    )
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
+                          ],
                         ),
                       ),
-                    )
-                  ],
+                      Expanded(
+                        child: RefreshIndicator(
+                          onRefresh: refreshScreen,
+                          child: filteredTodo.isEmpty
+                              ? ListView(
+                                  children: const [
+                                    Center(
+                                      child: Text('No Data'),
+                                    )
+                                  ],
+                                )
+                              : ListView.builder(
+                                  itemCount: filteredTodo.length,
+                                  itemBuilder: (context, index) {
+                                    return Card(
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: const BorderRadius.all(
+                                              Radius.circular(10.0)),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: HexColor('#000000')
+                                                  .withOpacity(0.2),
+                                              blurRadius: 4,
+                                            ),
+                                          ],
+                                        ),
+                                        height: 130.0,
+                                        child: Stack(
+                                          children: [
+                                            Positioned(
+                                                right: 0.0,
+                                                child: IconButton(
+                                                  onPressed: () =>
+                                                      showMenuModalButtom(
+                                                          filteredTodo[index],
+                                                          filteredTodo[index]
+                                                              .todoListId),
+                                                  icon: Icon(
+                                                    Icons.more_horiz,
+                                                    color: HexColor('#666161')
+                                                        .withOpacity(0.68),
+                                                  ),
+                                                )),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      vertical: 20.0,
+                                                      horizontal: 10.0),
+                                              child: Row(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Icon(
+                                                    filteredTodo[index]
+                                                                .todoListCompleted ==
+                                                            'true'
+                                                        ? Icons
+                                                            .check_circle_rounded
+                                                        : Icons.circle_outlined,
+                                                    size: 20.0,
+                                                    color: HexColor('#1DC9A0'),
+                                                  ),
+                                                  const SizedBox(
+                                                    width: 10.0,
+                                                  ),
+                                                  Expanded(
+                                                    child: Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        Text(
+                                                          '${filteredTodo[index].todoListTitle}',
+                                                          style: TextStyle(
+                                                            height: 1,
+                                                            fontSize: 20.0,
+                                                            fontWeight:
+                                                                FontWeight.w500,
+                                                            color: HexColor(
+                                                                '#0D7A5C'),
+                                                          ),
+                                                        ),
+                                                        Text(
+                                                          datetimeFormat(
+                                                              filteredTodo[
+                                                                          index]
+                                                                      .todoListLastUpdate ??
+                                                                  ''),
+                                                          style: TextStyle(
+                                                              height: 1.0,
+                                                              fontSize: 12.0,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w500,
+                                                              color: HexColor(
+                                                                  '#D9D9D9')),
+                                                        ),
+                                                        const SizedBox(
+                                                          height: 6.0,
+                                                        ),
+                                                        Expanded(
+                                                          child: Text(
+                                                            '${filteredTodo[index].todoListDesc}',
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis,
+                                                            maxLines: 3,
+                                                            style: TextStyle(
+                                                                fontSize: 12.0,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w500,
+                                                                color: HexColor(
+                                                                        '#666161')
+                                                                    .withOpacity(
+                                                                        0.68)),
+                                                          ),
+                                                        )
+                                                      ],
+                                                    ),
+                                                  )
+                                                ],
+                                              ),
+                                            )
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                        ),
+                      )
+                    ],
+                  ),
                 ),
-              ),
-      ),
-      floatingActionButton: Container(
-        width: 66,
-        height: 66,
-        decoration: BoxDecoration(shape: BoxShape.circle, boxShadow: [
-          BoxShadow(
-              offset: const Offset(0, 4),
-              blurRadius: 4.0,
-              color: Colors.black.withOpacity(0.25))
-        ]),
-        child: FloatingActionButton(
-          onPressed: () {
-            Navigator.pushNamed(context, 'todo-editor');
-          },
-          backgroundColor: HexColor('#0D7A5C'),
-          shape: const CircleBorder(eccentricity: 1.0),
-          child: const Image(
-            image: Svg('assets/images/calendaradd.svg'),
-            width: 40.0,
-            height: 40.0,
+        ),
+        floatingActionButton: Container(
+          width: 66,
+          height: 66,
+          decoration: BoxDecoration(shape: BoxShape.circle, boxShadow: [
+            BoxShadow(
+                offset: const Offset(0, 4),
+                blurRadius: 4.0,
+                color: Colors.black.withOpacity(0.25))
+          ]),
+          child: FloatingActionButton(
+            onPressed: () {
+              Navigator.pushNamed(context, 'todo-editor');
+            },
+            backgroundColor: HexColor('#0D7A5C'),
+            shape: const CircleBorder(eccentricity: 1.0),
+            child: const Image(
+              image: Svg('assets/images/calendaradd.svg'),
+              width: 40.0,
+              height: 40.0,
+            ),
           ),
         ),
       ),
@@ -374,7 +445,7 @@ class _TodoScreenState extends State<TodoScreen> {
     );
   }
 
-  void showMenuModalButtom(int? todoId) {
+  void showMenuModalButtom(TodoModel passItemTodo, int? todoId) {
     showModalBottomSheet(
       context: context,
       useSafeArea: true,
@@ -385,7 +456,15 @@ class _TodoScreenState extends State<TodoScreen> {
           width: MediaQuery.of(context).size.width,
           child: Wrap(runSpacing: 20, children: [
             CustomWidgets.buttonMenu(
-                () => Navigator.of(context).pushNamed('todo-editor'),
+                () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => TodoEditorScreen(
+                          todoModel: passItemTodo,
+                          isEditing: true,
+                        ),
+                      ),
+                    ),
                 'assets/images/messageedit.svg',
                 'Edit'),
             Divider(

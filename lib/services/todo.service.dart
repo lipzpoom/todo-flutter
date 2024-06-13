@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'dart:io';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -25,6 +26,20 @@ class TodoService {
     }
   }
 
+  Future<http.Response?> update(TodoModel model) async {
+    try {
+      var data = model.toJson();
+      return await http.post(
+        Uri.parse('$_baseUrl/update_todo'),
+        body: jsonEncode(data),
+        headers: headers,
+      );
+    } catch (e) {
+      print(e.toString());
+      rethrow;
+    }
+  }
+
   Future<http.Response?> delete(String todoId) async {
     return await http.delete(Uri.parse('$_baseUrl/delete_todo/$todoId'),
         headers: headers);
@@ -34,10 +49,7 @@ class TodoService {
     var response = await http.get(Uri.parse('$_baseUrl/todo_list/$userId'),
         headers: headers);
     if (response.statusCode == 200) {
-      var data = jsonDecode(response.body).cast<Map<String, dynamic>>();
-      List<TodoModel> dataMap =
-          data.map<TodoModel>((json) => TodoModel.fromJson(json)).toList();
-      return dataMap;
+      return parseData(response.body);
     } else {
       return <TodoModel>[];
     }

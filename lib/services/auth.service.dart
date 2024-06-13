@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,6 +14,8 @@ class AuthServices {
   };
 
   Future<UserModel> signin(String user, String password) async {
+    inspect(user);
+    inspect(password);
     try {
       var response = await http.post(Uri.parse('$_baseUrl/login'),
           body: jsonEncode({'user_email': user, 'user_password': password}),
@@ -20,7 +23,7 @@ class AuthServices {
       if (response.statusCode == 200) {
         var jsonResponseBody = jsonDecode(response.body);
         UserModel parsedData = UserModel.fromJson(jsonResponseBody);
-
+        setDataUser(parsedData);
         return parsedData;
       } else {
         throw 'Signin Failed';

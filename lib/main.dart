@@ -30,7 +30,7 @@ class MyApp extends StatelessWidget {
         'signin': (context) => const SignInScreen(),
         'signup': (context) => const SignUpScreen(),
         'todo': (context) => const TodoScreen(),
-        'todo-editor': (context) => const TodoEditorScreen()
+        'todo-editor': (context) => TodoEditorScreen()
       },
     );
   }
