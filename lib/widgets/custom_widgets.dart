@@ -24,11 +24,22 @@ class CustomWidgets {
       ),
       child: TextFormField(
         controller: textController,
+        textInputAction: TextInputAction.next,
         obscureText: password,
         validator: (value) {
-          if (value!.isEmpty) {
+          if (value == null || value.trim().isEmpty) {
             return 'Please enter your ${labelText.toLowerCase()}';
           }
+          final RegExp emailRegex = RegExp(
+            r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+          );
+
+          if (labelText.toLowerCase() == 'email' &&
+                  !emailRegex.hasMatch(value) ||
+              value.trim().isEmpty) {
+            return 'Please enter a valid email';
+          }
+
           return null;
         },
         decoration: InputDecoration(
@@ -39,8 +50,8 @@ class CustomWidgets {
             fontWeight: FontWeight.w500,
             color: HexColor('#666161'),
           ),
-          labelText: labelText,
-          // hintText: hintText ?? labelText,
+          // labelText: labelText,
+          hintText: hintText ?? labelText,
           hintStyle: const TextStyle(fontSize: 12),
           border: const OutlineInputBorder(
               borderRadius: BorderRadius.all(Radius.circular(15.0)),

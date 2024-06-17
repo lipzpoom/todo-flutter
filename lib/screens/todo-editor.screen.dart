@@ -2,11 +2,9 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hexcolor/hexcolor.dart';
 import 'package:todo/models/todo.model.dart';
-import 'package:todo/models/user.model.dart';
 import 'package:todo/services/auth.service.dart';
 import 'package:todo/services/todo.service.dart';
 import 'package:todo/utilities/colors.dart';
-import 'package:todo/utilities/custom_dialog.dart';
 import 'package:todo/widgets/custom_widgets.dart';
 
 class TodoEditorScreen extends StatefulWidget {
@@ -53,12 +51,11 @@ class _TodoEditorScreenState extends State<TodoEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvoked: (didPop) {
-        CustomDialog.warningDialog(context, 'Do you want to exit?', () {
-          Navigator.pop(context);
-        });
+    // ignore: deprecated_member_use
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.of(context).pushNamedAndRemoveUntil('todo', (route) => false);
+        return false;
       },
       child: Scaffold(
         resizeToAvoidBottomInset: false,
@@ -114,102 +111,119 @@ class _TodoEditorScreenState extends State<TodoEditorScreen> {
         ),
         body: GestureDetector(
           onTap: () => FocusScope.of(context).unfocus(),
-          child: Form(
-            key: _formKey,
-            child: Container(
-              padding: const EdgeInsets.all(20.0),
-              width: MediaQuery.of(context).size.width,
-              height: MediaQuery.of(context).size.height,
-              child: Column(
-                children: [
-                  Wrap(
-                    runSpacing: 10.0,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20.0, vertical: 8.0),
-                        decoration: CustomWidgets.inputDecoration(),
-                        child: TextFormField(
-                          controller: _todoTitleController,
-                          validator: (value) {
-                            if (value!.isEmpty) {
-                              return 'Please enter your title';
-                            }
-                            return null;
-                          },
-                          decoration: InputDecoration(
-                            border: InputBorder.none,
-                            hintText: 'Title',
-                            hintStyle: TextStyle(
-                                color: HexColor('#666161').withOpacity(0.68),
-                                fontSize: 16.0,
-                                fontWeight: FontWeight.w500),
-                          ),
-                        ),
-                      ),
-                      Container(
-                        height: 166,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20.0, vertical: 8.0),
-                        decoration: CustomWidgets.inputDecoration(),
-                        child: TextFormField(
-                          controller: _todoDescController,
-                          maxLines: 1000,
-                          validator: (value) {
-                            if (value!.isEmpty) {
-                              return 'Please enter your todo';
-                            }
-                            return null;
-                          },
-                          decoration: InputDecoration(
-                            border: InputBorder.none,
-                            hintText: 'Description',
-                            hintStyle: TextStyle(
-                                color: HexColor('#666161').withOpacity(0.68),
-                                fontSize: 16.0,
-                                fontWeight: FontWeight.w500),
-                          ),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20.0, vertical: 20.0),
-                        decoration: CustomWidgets.inputDecoration(),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Form(
+                      key: _formKey,
+                      // autovalidateMode: AutovalidateMode.onUserInteraction,
+                      child: SizedBox(
+                        height: MediaQuery.of(context).size.height,
+                        child: Column(
                           children: [
-                            Text(
-                              'Success',
-                              style: TextStyle(
-                                  color: AppColors.primaryColor,
-                                  fontSize: 16.0,
-                                  fontWeight: FontWeight.w500),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 20.0, vertical: 8.0),
+                              decoration: CustomWidgets.inputDecoration(),
+                              child: TextFormField(
+                                controller: _todoTitleController,
+                                textInputAction: TextInputAction.next,
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty) {
+                                    return 'Please enter your title';
+                                  }
+                                  return null;
+                                },
+                                decoration: InputDecoration(
+                                  border: InputBorder.none,
+                                  hintText: 'Title',
+                                  hintStyle: TextStyle(
+                                      color:
+                                          HexColor('#666161').withOpacity(0.68),
+                                      fontSize: 16.0,
+                                      fontWeight: FontWeight.w500),
+                                ),
+                              ),
                             ),
-                            CupertinoSwitch(
-                              value: isProgessSwitch,
-                              activeColor: AppColors.bgColorItemPrimary,
-                              onChanged: (value) {
-                                setState(() {
-                                  isProgessSwitch = value;
-                                });
-                              },
-                            )
+                            const SizedBox(height: 10.0),
+                            Container(
+                              height: 166,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 20.0, vertical: 8.0),
+                              decoration: CustomWidgets.inputDecoration(),
+                              child: TextFormField(
+                                controller: _todoDescController,
+                                maxLines: 1000,
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty) {
+                                    return 'Please enter your todo';
+                                  }
+                                  if (value.startsWith(' ') ||
+                                      value.startsWith(('\n'))) {
+                                    return 'Please do not start with a space or newline';
+                                  }
+                                  return null;
+                                },
+                                decoration: InputDecoration(
+                                  border: InputBorder.none,
+                                  hintText: 'Description',
+                                  hintStyle: TextStyle(
+                                      color:
+                                          HexColor('#666161').withOpacity(0.68),
+                                      fontSize: 16.0,
+                                      fontWeight: FontWeight.w500),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(
+                              height: 10.0,
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 20.0, vertical: 20.0),
+                              decoration: CustomWidgets.inputDecoration(),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Success',
+                                    style: TextStyle(
+                                        color: AppColors.primaryColor,
+                                        fontSize: 16.0,
+                                        fontWeight: FontWeight.w500),
+                                  ),
+                                  CupertinoSwitch(
+                                    autofocus: false,
+                                    value: isProgessSwitch,
+                                    activeColor: AppColors.bgColorItemPrimary,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        isProgessSwitch = value;
+                                      });
+                                    },
+                                  )
+                                ],
+                              ),
+                            ),
                           ],
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                  const Spacer(),
-                  Container(
-                    width: MediaQuery.of(context).size.width,
-                    decoration:
-                        CustomWidgets.gradientDecoration('#0D7A5C', '#53CD9F'),
-                    child: CustomWidgets.buttonStyle(() {
-                      onCreate();
-                    }, 'Save'),
-                  )
-                ],
-              ),
+                ),
+                Container(
+                  width: MediaQuery.of(context).size.width,
+                  decoration:
+                      CustomWidgets.gradientDecoration('#0D7A5C', '#53CD9F'),
+                  child: CustomWidgets.buttonStyle(() {
+                    onCreate();
+                  }, 'Save'),
+                )
+              ],
             ),
           ),
         ),
@@ -226,9 +240,10 @@ class _TodoEditorScreenState extends State<TodoEditorScreen> {
       if (widget.isEditing != true) {
         int? userId;
         await AuthServices().getDataUser().then((data) {
-          userId = UserModel.fromList(data).userId;
+          userId = data.userId;
         });
         itemTodo.userId = userId;
+        itemTodo.todoTypeId = 1;
         TodoService().create(itemTodo).then((value) => Navigator.of(context)
             .pushNamedAndRemoveUntil('todo', (route) => false));
       } else {

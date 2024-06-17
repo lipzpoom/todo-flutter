@@ -1,17 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:todo/screens/signin.screen.dart';
 import 'package:todo/screens/signup.screen.dart';
+import 'package:todo/screens/splash.screen.dart';
 import 'package:todo/screens/todo-editor.screen.dart';
 import 'package:todo/screens/todo.screen.dart';
+import 'package:todo/services/auth.service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await AuthServices.init();
+
   runApp(const MyApp());
 }
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -24,13 +30,13 @@ class MyApp extends StatelessWidget {
               fontFamily: 'Outfit',
             ),
       ),
-      home: const SignInScreen(),
-      // home: const MyHomePage(title: 'Todo App'),
+      navigatorKey: navigatorKey,
+      home: const SplashScreen(),
       routes: {
         'signin': (context) => const SignInScreen(),
         'signup': (context) => const SignUpScreen(),
         'todo': (context) => const TodoScreen(),
-        'todo-editor': (context) => TodoEditorScreen()
+        'todo-editor': (context) => const TodoEditorScreen()
       },
     );
   }

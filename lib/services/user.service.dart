@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:todo/main.dart';
 import 'dart:convert';
 import 'package:todo/models/user.model.dart';
+import 'package:todo/utilities/custom_dialog.dart';
 import 'package:todo/utilities/globals.dart';
 
 class UserService {
@@ -14,37 +16,26 @@ class UserService {
   Future<http.Response?> create(UserModel model) async {
     try {
       var data = model.toJson();
-      return await http.post(
-        Uri.parse('$_baseUrl/create_user'),
-        body: jsonEncode(data),
-        headers: headers,
-      );
+      var response = await http
+          .post(
+            Uri.parse('$_baseUrl/create_user'),
+            body: jsonEncode(data),
+            headers: headers,
+          )
+          .timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200 && response.body == 'OK') {
+        return response;
+      } else {
+        var errMessage = jsonDecode(response.body)['message'] ??
+            'Something went wrong.Please contact support.';
+        throw errMessage;
+      }
+    } on SocketException catch (e) {
+      CustomDialog.errorDialog(navigatorKey.currentContext!, e.message);
+      rethrow;
     } catch (e) {
-      print(e.toString());
+      CustomDialog.errorDialog(navigatorKey.currentContext!, e.toString());
       rethrow;
     }
   }
-
-  // Future<UserModel> findOne(String userId) async {
-  //   try {
-  //     var response = await http.get(
-  //       Uri.parse('$_baseUrl/$userId'),
-  //       headers: headers,
-  //     );
-  //     if (response.statusCode == 200) {
-  //       var jsonResponseBody = jsonDecode(response.body);
-  //       return UserModel.fromJson(jsonResponseBody);
-  //     } else {
-  //       throw Exception('Failed to load user');
-  //     }
-  //   } catch (e) {
-  //     print(e.toString());
-  //     throw Exception('Error fetching user');
-  //   }
-  // }
-
-  // List<UserModel> parseJsonData(String responseBody) {
-  //   final parsed = jsonDecode(responseBody)<Map<String, dynamic>>();
-  //   return parsed.map<UserModel>((json) => UserModel.fromJson(json)).toList();
-  // }
 }
